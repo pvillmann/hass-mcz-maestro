@@ -19,5 +19,27 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     }
+  },
+  "entity": {
+    "switch": {
+      "eco_mode": {
+        "name": "Eco mode"
+      },
+      "silent_mode": {
+        "name": "Silent mode"
+      },
+      "active_mode": {
+        "name": "Active mode"
+      },
+      "dynamic_mode": {
+        "name": "Dynamic mode"
+      },
+      "chrono_mode": {
+        "name": "Chrono mode"
+      },
+      "summer_mode": {
+        "name": "Summer mode"
+      }
+    }
   }
 }

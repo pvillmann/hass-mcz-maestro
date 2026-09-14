@@ -27,11 +27,32 @@ async def async_setup_entry(
     coordinator = data[COORDINATOR]
 
     entities = [
-        MczSwitchEntity(controller, coordinator, "Mode Eco", "Eco_Mode", 41),
-        MczSwitchEntity(controller, coordinator, "Mode Silencieux", "Silent_Mode", 45),
-        MczSwitchEntity(controller, coordinator, "Mode Actif", "Active_Mode", 35),
-        MczSwitchEntity(controller, coordinator, "Mode Dynamique", "Control_Mode", 40),
-        MczSwitchEntity(controller, coordinator, "Mode Chrono", "Chronostat", 1111),
+        MczSwitchEntity(
+            controller, coordinator, "Eco Mode", "Eco_Mode", 41, "eco_mode"
+        ),
+        MczSwitchEntity(
+            controller, coordinator, "Silent Mode", "Silent_Mode", 45, "silent_mode"
+        ),
+        MczSwitchEntity(
+            controller, coordinator, "Active Mode", "Active_Mode", 35, "active_mode"
+        ),
+        MczSwitchEntity(
+            controller,
+            coordinator,
+            "Dynamic Mode",
+            "Control_Mode",
+            40,
+            "dynamic_mode",
+        ),
+        MczSwitchEntity(
+            controller, coordinator, "Chrono Mode", "Chronostat", 1111, "chrono_mode"
+        ),
+        # Confirmed via MITM capture of the MCZ app (13.09.2026): writing param
+        # 58 with 1/0 switches summer/winter mode; it reads back in the "Mode"
+        # status field (1 = summer, 0 = winter). Genuinely new discovery.
+        MczSwitchEntity(
+            controller, coordinator, "Summer Mode", "Mode", 58, "summer_mode"
+        ),
     ]
     if entities:
         async_add_entities(entities)
@@ -47,22 +68,27 @@ class MczSwitchEntity(MczEntity, SwitchEntity):
         name: str,
         command_name: str,
         command_id: int,
+        translation_key: str | None = None,
     ) -> None:
         """Initialize the sensor."""
-        super().__init__(controller, coordinator, name, command_name)
+        super().__init__(controller, coordinator, name, command_name, translation_key)
         self._command_id: int = command_id
 
     @property
     def is_on(self) -> bool:
         """Return the state."""
-        return self.coordinator.data[self._command_name] == 1
+        return int(self.coordinator.data[self._command_name]) == 1
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the switch."""
-        self.controller.send(f"C|WriteParametri|{self._command_id!s}|1")
+        await self.hass.async_add_executor_job(
+            self.controller.send, f"C|WriteParametri|{self._command_id!s}|1"
+        )
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the switch."""
-        self.controller.send(f"C|WriteParametri|{self._command_id!s}|0")
+        await self.hass.async_add_executor_job(
+            self.controller.send, f"C|WriteParametri|{self._command_id!s}|0"
+        )
         await self.coordinator.async_request_refresh()

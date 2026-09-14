@@ -1,0 +1,45 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "MCZ Maestro einrichten",
+                "description": "Verbindung zum Ofen. Home Assistant muss den Ofen direkt erreichen (WLAN-Hotspot des Ofens, Standard 192.168.120.1:81).",
+                "data": {
+                    "host": "Host",
+                    "port": "Port",
+                    "scan_interval": "Sekunden zwischen den Abfragen"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+            "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+            "unknown": "[%key:common::config_flow::error::unknown%]"
+        },
+        "abort": {
+            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+        }
+    },
+    "entity": {
+        "switch": {
+            "eco_mode": {
+                "name": "Eco-Modus"
+            },
+            "silent_mode": {
+                "name": "Silent-Modus"
+            },
+            "active_mode": {
+                "name": "Aktiv-Modus"
+            },
+            "dynamic_mode": {
+                "name": "Dynamik-Modus"
+            },
+            "chrono_mode": {
+                "name": "Chrono-Modus"
+            },
+            "summer_mode": {
+                "name": "Sommermodus"
+            }
+        }
+    }
+}
