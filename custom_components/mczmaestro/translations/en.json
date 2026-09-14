@@ -40,6 +40,11 @@
             "summer_mode": {
                 "name": "Summer mode"
             }
+        },
+        "button": {
+            "sync_time": {
+                "name": "Sync date & time"
+            }
         }
     }
 }
