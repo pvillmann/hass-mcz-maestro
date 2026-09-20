@@ -46,7 +46,9 @@ class MczConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if entry:
             self._abort_if_unique_id_configured()
 
-        controller = MaestroController(user_input[CONF_HOST], user_input[CONF_PORT])
+        controller = await self.hass.async_add_executor_job(
+            MaestroController, user_input[CONF_HOST], user_input[CONF_PORT]
+        )
 
         if not controller.connected:
             errors["base"] = "cannot_connect"

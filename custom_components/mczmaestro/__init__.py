@@ -10,30 +10,51 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from websocket import WebSocketException
+
 from .const import CONTROLLER, COORDINATOR, DOMAIN, UNDO_UPDATE_LISTENER
 from .maestro import MaestroController
 
 _LOGGER = logging.getLogger(__name__)
 
 
-PLATFORMS = [Platform.CLIMATE, Platform.NUMBER, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [
+    Platform.BUTTON,
+    Platform.CLIMATE,
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MCZ Maestro from a config entry."""
     config = entry.data
 
-    controller = MaestroController(config[CONF_HOST], config[CONF_PORT])
+    try:
+        controller = await hass.async_add_executor_job(
+            MaestroController, config[CONF_HOST], config[CONF_PORT]
+        )
+    except (OSError, WebSocketException) as err:
+        # The stove sits behind a weak WLAN link that drops regularly. Raising
+        # ConfigEntryNotReady makes HA retry with backoff instead of failing the
+        # setup permanently and leaving every entity dead until a manual reload.
+        raise ConfigEntryNotReady(
+            f"Can't connect to MCZ at {config[CONF_HOST]}:{config[CONF_PORT]}: {err}"
+        ) from err
 
     if not controller.connected:
         _LOGGER.error("Can't connect to MCZ")
         raise ConfigEntryNotReady
     _LOGGER.debug("Connected to MCZ")
 
+    def _fetch_data():
+        """Fetch data from API (blocking socket I/O, runs in executor)."""
+        return controller.poll()
+
     async def async_update_data():
         """Fetch data from API."""
-        controller.send("C|RecuperoInfo")
-        return controller.receive()
+        return await hass.async_add_executor_job(_fetch_data)
 
     coordinator = DataUpdateCoordinator(
         hass,
