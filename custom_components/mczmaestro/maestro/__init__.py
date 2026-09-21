@@ -1,4 +1,5 @@
 """MCZ Maestro."""
+import threading
 import websocket
 
 import logging
@@ -8,14 +9,41 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class MaestroController:
-    """Control the MCZ."""
+    """Control the MCZ.
+
+    One shared WebSocket is used for both the periodic status poll and for
+    write commands. The socket is not request/response-framed, so poll and
+    commands must be serialized, and any command that produces its own reply
+    (only ``SalvaDataOra`` does, echoing ``AA|<datetime>``) must have that
+    reply drained — otherwise the next poll reads the stale echo instead of a
+    status frame and every entity briefly goes unavailable.
+    """
 
     def __init__(self, host: str, port: int, timeout: int = 60) -> None:
         """Init the MCZ."""
         self._host = host
         self._port = str(port)
+        self._timeout = timeout
+        self._lock = threading.Lock()
+        self._server = None
+        self._connect()
+
+    def _connect(self) -> None:
+        """(Re)build the WebSocket connection.
+
+        The socket dies on every WLAN drop, AP restart or stove reboot. Without
+        rebuilding it, every later call keeps writing into a dead descriptor and
+        the integration stays unavailable until a human reloads it.
+        Callers already hold ``_lock``; this method must never take it itself.
+        """
+        if self._server is not None:
+            try:
+                self._server.close()
+            except Exception:  # noqa: BLE001 - closing a dead socket must not raise
+                pass
+            self._server = None
         self._server = websocket.create_connection(
-            f"ws://{self._host}:{self._port}", timeout=timeout
+            f"ws://{self._host}:{self._port}", timeout=self._timeout
         )
 
     @property
@@ -34,11 +62,65 @@ class MaestroController:
         return self._server.connected
 
     def send(self, message) -> None:
-        """Send a message."""
-        self._server.send(message)
+        """Send a fire-and-forget command (WriteParametri; no reply expected)."""
+        with self._lock:
+            try:
+                if self._server is None:
+                    self._connect()
+                self._server.send(message)
+            except (OSError, websocket.WebSocketException) as err:
+                _LOGGER.warning(
+                    "MCZ send failed (%s) - rebuilding connection", err
+                )
+                self._connect()
+                self._server.send(message)
+
+    def send_with_echo(self, message) -> None:
+        """Send a command that echoes a reply, and drain that reply.
+
+        Used for ``SalvaDataOra`` so its ``AA|...`` echo does not desync the
+        next status poll.
+        """
+        with self._lock:
+            try:
+                if self._server is None:
+                    self._connect()
+                self._server.send(message)
+                self._server.recv()
+            except (OSError, websocket.WebSocketException) as err:
+                _LOGGER.warning(
+                    "MCZ send_with_echo failed (%s) - rebuilding connection", err
+                )
+                self._connect()
+                self._server.send(message)
+                self._server.recv()
+
+    def poll(self) -> dict:
+        """Atomically request and read one status frame.
+
+        Rebuilds the connection once if the socket has died, instead of polling
+        a dead descriptor forever. If the rebuild itself fails (WLAN still
+        down), the error propagates: the coordinator marks the entities
+        unavailable and simply retries on the next interval.
+        """
+        with self._lock:
+            try:
+                if self._server is None:
+                    self._connect()
+                self._server.send("C|RecuperoInfo")
+                data = self._server.recv()
+            except (OSError, websocket.WebSocketException) as err:
+                _LOGGER.warning(
+                    "MCZ poll failed (%s) - rebuilding connection to %s:%s",
+                    err, self._host, self._port,
+                )
+                self._connect()
+                self._server.send("C|RecuperoInfo")
+                data = self._server.recv()
+        return process_infostring(data)
 
     def receive(self) -> dict:
-        """Get data."""
+        """Get data (legacy; kept for compatibility)."""
         data = self._server.recv()
         return process_infostring(data)
 
@@ -179,16 +261,20 @@ MAESTRO_INFORMATION = [
     MaestroInformation(44, "Minutes_To_Switch_Off", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(45, "Number_Of_Ignitions", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(46, "Active_Temperature", MAESTRO_MESSAGE_TYPE_INT),
-    MaestroInformation(47, "Celcius_Or_Fahrenheit", MAESTRO_MESSAGE_TYPE_ONOFF),
-    MaestroInformation(48, "Sound_Effects", MAESTRO_MESSAGE_TYPE_ONOFF),
-    MaestroInformation(49, "Sound_Effects_State", MAESTRO_MESSAGE_TYPE_ONOFF),
+    # Fixed off-by-one vs. upstream Aohzan const.py: Pellet_Sensor was missing
+    # and a fabricated "Sound_Effects_State" took its place, shifting every
+    # field from here through 51 by one slot. Corrected against the original
+    # Chibald/maestrogateway messages.py (the source Aohzan forked from).
+    MaestroInformation(47, "Pellet_Sensor", MAESTRO_MESSAGE_TYPE_INT),
+    MaestroInformation(48, "Celcius_Or_Fahrenheit", MAESTRO_MESSAGE_TYPE_ONOFF),
+    MaestroInformation(49, "Sound_Effects", MAESTRO_MESSAGE_TYPE_ONOFF),
     MaestroInformation(50, "Sleep", MAESTRO_MESSAGE_TYPE_ONOFF),
     MaestroInformation(51, "Mode", MAESTRO_MESSAGE_TYPE_ONOFF),
     MaestroInformation(52, "WifiSondeTemperature1", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(53, "WifiSondeTemperature2", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(54, "WifiSondeTemperature3", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(55, "Unknown", MAESTRO_MESSAGE_TYPE_INT),
-    MaestroInformation(56, "SetPuffer", MAESTRO_MESSAGE_TYPE_INT),
+    MaestroInformation(56, "SetPuffer", MAESTRO_MESSAGE_TYPE_TEMP),
     MaestroInformation(57, "SetBoiler", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(58, "SetHealth", MAESTRO_MESSAGE_TYPE_INT),
     MaestroInformation(59, "Return_Temperature", MAESTRO_MESSAGE_TYPE_TEMP),
