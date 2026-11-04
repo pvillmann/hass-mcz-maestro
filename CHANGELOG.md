@@ -2,7 +2,7 @@
 
 ## 0.2.0 (fork pvillmann, 2026-11)
 
-Archived fork, see README.
+Fork, working but no longer maintained, see README.
 
 - fix status field mapping (Pellet_Sensor missing, fields 47-51 shifted)
 - fix switches always off and stove never powering on (string/int comparisons)

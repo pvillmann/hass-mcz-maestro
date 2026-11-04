@@ -2,8 +2,9 @@
 
 Fork of [Aohzan/hass-mcz-maestro](https://github.com/Aohzan/hass-mcz-maestro). The `mczmaestro` integration talks to an MCZ Maestro stove over the stove's own Wi-Fi hotspot (WebSocket, default `192.168.120.1:81`). No MCZ cloud involved.
 
-> **Status: archived, not maintained.**
-> This fork ran my stove from September to November 2026. I have since moved to ESPHome on the stove's second Wi-Fi module ([pvillmann/mcz-maestro-esphome](https://github.com/pvillmann/mcz-maestro-esphome), based on [lexyan/mcz-maestro-esphome](https://github.com/lexyan/mcz-maestro-esphome)), which needs no hotspot connection. The code here works and is published so others can use the fixes and findings. Issues and PRs are welcome but may not get an answer.
+> **Status: working, but no longer maintained.**
+> This fork controlled my stove from September to November 2026: reading, setpoints, power on/off, all of it worked. What made me switch was the Wi-Fi, not the integration. The stove hotspot is very picky (weak signal, drops whenever the stove's home Wi-Fi side changes channel, see below), and keeping Home Assistant connected to it needed a dedicated Wi-Fi card plus an auto-recovery job.
+> I have since moved to ESPHome on the stove's second Wi-Fi module ([pvillmann/mcz-maestro-esphome](https://github.com/pvillmann/mcz-maestro-esphome), based on [lexyan/mcz-maestro-esphome](https://github.com/lexyan/mcz-maestro-esphome)). It joins the normal home Wi-Fi and needs no hotspot connection. If you can't or don't want to flash the stove, this integration is a good option. Issues and PRs are welcome but may not get an answer.
 
 Tested on an **MCZ Suite/Club Hydromatic 16 M1** (board M1.Hydro, firmware 1.10.10).
 
