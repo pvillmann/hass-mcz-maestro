@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 (fork pvillmann, 2026-11)
+
+Archived fork, see README.
+
+- fix status field mapping (Pellet_Sensor missing, fields 47-51 shifted)
+- fix switches always off and stove never powering on (string/int comparisons)
+- run blocking socket I/O in the executor, serialize poll and writes
+- rebuild the WebSocket after Wi-Fi drops, retry setup with ConfigEntryNotReady
+- add all protocol fields as entities
+- add puffer setpoint, boiler setpoint, power level, summer mode, time sync
+- derive hvac_action from the stove phase
+- translations en/fr/de
+
 ## 0.1.7
 
 - fix error when adding new integration
