@@ -12,12 +12,11 @@
             }
         },
         "error": {
-            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-            "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-            "unknown": "[%key:common::config_flow::error::unknown%]"
+            "cannot_connect": "Ofen nicht erreichbar. Ist Home Assistant mit dem WLAN-Hotspot des Ofens verbunden?",
+            "unknown": "Unerwarteter Fehler, siehe Home-Assistant-Protokoll."
         },
         "abort": {
-            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+            "already_configured": "Dieser Ofen ist bereits eingerichtet."
         }
     },
     "entity": {

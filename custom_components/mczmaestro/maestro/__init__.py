@@ -46,6 +46,16 @@ class MaestroController:
             f"ws://{self._host}:{self._port}", timeout=self._timeout
         )
 
+    def close(self) -> None:
+        """Close the WebSocket (used by the config flow after its test)."""
+        with self._lock:
+            if self._server is not None:
+                try:
+                    self._server.close()
+                except Exception:  # noqa: BLE001 - closing a dead socket must not raise
+                    pass
+                self._server = None
+
     @property
     def host(self) -> str:
         """Return the server host."""
