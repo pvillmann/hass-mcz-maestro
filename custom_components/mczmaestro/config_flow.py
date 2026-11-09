@@ -1,8 +1,10 @@
 """Config flow to configure the MCZ Maestro integration."""
 
+import logging
 from typing import Any
 
 import voluptuous as vol
+from websocket import WebSocketException
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
@@ -10,6 +12,8 @@ from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
 
 from .const import DOMAIN
 from .maestro import MaestroController
+
+_LOGGER = logging.getLogger(__name__)
 
 BASE_SCHEMA = vol.Schema(
     {
@@ -46,18 +50,32 @@ class MczConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if entry:
             self._abort_if_unique_id_configured()
 
-        controller = await self.hass.async_add_executor_job(
-            MaestroController, user_input[CONF_HOST], user_input[CONF_PORT]
-        )
-
-        if not controller.connected:
+        try:
+            # Short timeout: the stove answers within a second when reachable,
+            # and the user should not stare at a spinner for a minute.
+            controller = await self.hass.async_add_executor_job(
+                MaestroController, user_input[CONF_HOST], user_input[CONF_PORT], 10
+            )
+        except (OSError, WebSocketException):
             errors["base"] = "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected error while connecting to the stove")
+            errors["base"] = "unknown"
+        else:
+            connected = controller.connected
+            # Do not leave the test socket open on the stove.
+            await self.hass.async_add_executor_job(controller.close)
+            if not connected:
+                errors["base"] = "cannot_connect"
+
+        if errors:
             return self.async_show_form(
-                step_id="user", data_schema=BASE_SCHEMA, errors=errors
+                step_id="user",
+                data_schema=self.add_suggested_values_to_schema(BASE_SCHEMA, user_input),
+                errors=errors,
             )
 
-        self.base_input = user_input
         return self.async_create_entry(
-            title=f"MCZ Maestro {controller.host}:{controller.port}",
+            title=f"MCZ Maestro {user_input[CONF_HOST]}:{user_input[CONF_PORT]}",
             data=user_input,
         )

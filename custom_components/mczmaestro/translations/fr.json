@@ -3,21 +3,20 @@
         "step": {
             "user": {
                 "title": "Configuration MCZ Maestro",
-                "description": "Définir les paramètres de connexion, Home-Assistant doit avoir un accès direct au poêle.",
+                "description": "Home Assistant doit être connecté au point d'accès Wi-Fi du poêle (MCZ-…). Les valeurs par défaut conviennent à presque tous les poêles.",
                 "data": {
-                    "host": "IP",
+                    "host": "Hôte",
                     "port": "Port",
-                    "scan_interval": "Seconds entre chaque mise à jour de l'état"
+                    "scan_interval": "Secondes entre chaque mise à jour"
                 }
             }
         },
         "error": {
-            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-            "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-            "unknown": "[%key:common::config_flow::error::unknown%]"
+            "cannot_connect": "Impossible de joindre le poêle. Home Assistant est-il connecté au point d'accès Wi-Fi du poêle ?",
+            "unknown": "Erreur inattendue, voir le journal de Home Assistant."
         },
         "abort": {
-            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+            "already_configured": "Ce poêle est déjà configuré."
         }
     },
     "entity": {
